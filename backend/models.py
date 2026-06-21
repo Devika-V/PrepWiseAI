@@ -13,8 +13,6 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # These let you write user.sessions or user.skill_profiles in Python
-    # and SQLAlchemy automatically fetches the related rows for you.
     sessions = relationship("InterviewSession", back_populates="user")
     skill_profiles = relationship("SkillProfile", back_populates="user")
 
@@ -38,9 +36,14 @@ class Question(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("interview_sessions.id"), nullable=False)
-    skill_tag = Column(String, nullable=False)   # e.g. "DSA", "Behavioral"
+    skill_tag = Column(String, nullable=False)
     text = Column(String, nullable=False)
     difficulty = Column(String, default="medium")
+    # NEW (Day 5): semicolon-joined rubric points for this specific question,
+    # using the exact same flatten-to-string pattern as Day 3's ChromaDB
+    # metadata, so the evaluation step can grade against it later even
+    # though it arrives in a completely separate HTTP request.
+    rubric = Column(String, nullable=True)
 
     session = relationship("InterviewSession", back_populates="questions")
     answer = relationship("Answer", back_populates="question", uselist=False)
