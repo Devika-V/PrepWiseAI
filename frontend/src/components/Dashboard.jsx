@@ -1,16 +1,28 @@
 import { useState } from "react";
 import { startInterview } from "../api";
 
-// These must exactly match the role/company strings in your backend's
-// data/questions.json - same case-sensitivity rule from Day 3.
-const ROLES = ["Software Engineer"];
-const COMPANIES = ["Goldman Sachs", "Google"];
+// Must exactly match the role/company combinations that actually exist in
+// your backend's data/questions.json. Each role only lists the companies it
+// genuinely has questions for, so picking any combo here is guaranteed to work.
+const ROLE_COMPANIES = {
+  "Software Engineer": ["Goldman Sachs", "Google", "Amazon", "Microsoft", "Meta", "JPMorgan Chase"],
+  "Data Analyst": ["Goldman Sachs", "Amazon"],
+  "Product Manager": ["Google", "Amazon"],
+  "Investment Banking Analyst": ["Goldman Sachs", "JPMorgan Chase"],
+  "Marketing Analyst": ["Amazon", "Meta"],
+};
+const ROLES = Object.keys(ROLE_COMPANIES);
 
 export default function Dashboard({ token, onStart }) {
   const [role, setRole] = useState(ROLES[0]);
-  const [company, setCompany] = useState(COMPANIES[0]);
+  const [company, setCompany] = useState(ROLE_COMPANIES[ROLES[0]][0]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function handleRoleChange(newRole) {
+    setRole(newRole);
+    setCompany(ROLE_COMPANIES[newRole][0]); // reset to a valid company whenever the role changes
+  }
 
   async function handleStart() {
     setError("");
@@ -37,7 +49,7 @@ export default function Dashboard({ token, onStart }) {
           <label className="block text-xs uppercase tracking-wide text-muted mb-1">Role</label>
           <select
             value={role}
-            onChange={(e) => setRole(e.target.value)}
+            onChange={(e) => handleRoleChange(e.target.value)}
             className="w-full border border-ink/20 rounded-md px-3 py-2 bg-white"
           >
             {ROLES.map((r) => (
@@ -52,7 +64,7 @@ export default function Dashboard({ token, onStart }) {
             onChange={(e) => setCompany(e.target.value)}
             className="w-full border border-ink/20 rounded-md px-3 py-2 bg-white"
           >
-            {COMPANIES.map((c) => (
+            {ROLE_COMPANIES[role].map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>

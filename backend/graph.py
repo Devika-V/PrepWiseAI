@@ -5,7 +5,21 @@ from langgraph.graph import StateGraph, START, END
 import rag
 import llm
 
-SKILL_TAGS = ["DSA", "System Design", "Behavioral", "Communication"]
+# Each role tracks its own relevant skill categories. Behavioral and
+# Communication are shared across every role (they're genuinely role-agnostic),
+# while the other two per role are specific to that interview type.
+ROLE_SKILL_TAGS = {
+    "Software Engineer": ["DSA", "System Design", "Behavioral", "Communication"],
+    "Data Analyst": ["SQL", "Statistics", "Behavioral", "Communication"],
+    "Product Manager": ["Product Sense", "Execution & Metrics", "Behavioral", "Communication"],
+    "Investment Banking Analyst": ["Technical Finance", "Market Awareness", "Behavioral", "Communication"],
+    "Marketing Analyst": ["Marketing Analytics", "Campaign Strategy", "Behavioral", "Communication"],
+}
+
+# The full set of every skill tag that exists anywhere, used only as a
+# fallback for an unrecognized role - normal code paths should always use
+# ROLE_SKILL_TAGS[role] instead of this flat list.
+SKILL_TAGS = sorted({tag for tags in ROLE_SKILL_TAGS.values() for tag in tags})
 
 
 class InterviewState(TypedDict):
@@ -22,11 +36,13 @@ class InterviewState(TypedDict):
     skill_scores: dict
 
 
-def init_skill_scores() -> dict:
+def init_skill_scores(role: str = None) -> dict:
     # Everyone starts at a neutral 5.0 - this gives select_next_skill_node
-    # something sensible to compare against before any real answers exist,
-    # so the very first "weakest skill" pick isn't meaningless.
-    return {tag: 5.0 for tag in SKILL_TAGS}
+    # something sensible to compare against before any real answers exist.
+    # Scoped to the given role's relevant tags only, falling back to every
+    # known tag if the role isn't recognized.
+    tags = ROLE_SKILL_TAGS.get(role, SKILL_TAGS)
+    return {tag: 5.0 for tag in tags}
 
 
 # ---------------------------------------------------------------------------
@@ -49,10 +65,11 @@ def generate_question_node(state: InterviewState) -> dict:
     if not candidates:
         # Safety net - if retrieval somehow returns nothing, never let the
         # interview hard-crash. Fall back to a generic, always-safe question.
+        fallback_tags = ROLE_SKILL_TAGS.get(state["role"], SKILL_TAGS)
         return {
             "current_question": "Tell me about a project you're proud of and why.",
             "rubric_points": ["gives a specific example", "explains the impact"],
-            "current_skill_tag": state.get("target_skill_tag") or "Behavioral",
+            "current_skill_tag": state.get("target_skill_tag") or fallback_tags[-1],
         }
 
     best = candidates[0]
